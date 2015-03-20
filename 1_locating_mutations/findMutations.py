@@ -2,7 +2,8 @@
 
 import os, re, sys
 
-# construct the trie data structure for the passed set of patterns
+
+# Construct the trie data structure for the passed set of patterns
 def trieConstruction(patterns):
     trie = dict()
     
@@ -20,6 +21,7 @@ def trieConstruction(patterns):
     return trie
     
     
+# Print an adjacency list for the nodes in the passed trie
 def printTrieAdjacency(trie, num=0, total=0):
     for node in sorted(trie):
         print '%d->%d:%s' % (num, total+1, node)
@@ -31,6 +33,8 @@ def printTrieAdjacency(trie, num=0, total=0):
 # printTrieAdjacency(trie)
 
 
+# If the the passed trie conatins a match in the passed text, return 
+# the portion of text that matches or None if there is no match
 def prefixTrieMatching(text, trie):
     pos = 0
     v = trie
@@ -39,15 +43,13 @@ def prefixTrieMatching(text, trie):
         if len(v)==0:
             return text[:pos]
         elif text[pos] in v:
-            #print text[pos], pos, len(text), text
             v = v[ text[pos] ]
             pos += 1
-            # if pos==len(text):
-                # return text
         else:
-            #print 'no matches found'
             return None
-            
+
+# looks for a match of the passed trie at all positions in the
+# passed text.  Returns all positions where there is  match. 
 def trieMatching(text, trie):
     positions = []
     for i in range(len(text)):
@@ -60,6 +62,7 @@ def trieMatching(text, trie):
 # print trieMatching('AATCGGGTTCAATCGGGGT', trie)
 
 
+# Construct a suffix trie
 suffixTrieConstruction(seq):
     trie = dict()
     for i in range(len(seq)):
