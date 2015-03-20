@@ -62,14 +62,27 @@ def trieMatching(text, trie):
 # print trieMatching('AATCGGGTTCAATCGGGGT', trie)
 
 
+class Edge:
+    def __init__(self, symbol, pos):
+        self.symbol = symbol
+        self.pos = pos
+    def __hash__(self):
+        return hash(self.symbol)
+    
+        
+
 # Construct a suffix trie
-suffixTrieConstruction(seq):
+modifiedSuffixTrieConstruction(seq):
     trie = dict()
     for i in range(len(seq)):
         currentNode = trie
+        
         for j in range(i, len(seq)):
             if seq[j] in currentNode:
                 currentNode = currentNode[ seq[j] ]
             else
                 newNode = dict()
-                currentNode[ seq[j] ] = (seq[j], j)
+                currentNode[ seq[j] ] = Edge(seq[j], j)
+                
+                
+                
