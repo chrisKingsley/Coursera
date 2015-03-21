@@ -62,27 +62,45 @@ def trieMatching(text, trie):
 # print trieMatching('AATCGGGTTCAATCGGGGT', trie)
 
 
-class Edge:
-    def __init__(self, symbol, pos):
-        self.symbol = symbol
-        self.pos = pos
-    def __hash__(self):
-        return hash(self.symbol)
+# class Edge:
+    # def __init__(self, symbol, pos):
+        # self.symbol = symbol
+        # self.pos = pos
+    # def __hash__(self):
+        # return hash(self.symbol)
+    # def __eq__(self, other):
+        # return self.symbol==other.symbol and self.pos==other.pos
+    # def updatePos(self, pos):
+        # if pos < self.pos:
+            # self.pos=pos
     
-        
-
+    
+    
+    
+# def nodeContainsChar(currentNode, char):
+    # for charTuple in currentNode:
+        # if charTuple[0]==char:
+            # return True
+    # return False
+    
+    
 # Construct a suffix trie
-modifiedSuffixTrieConstruction(seq):
+def modifiedSuffixTrieConstruction(seq):
     trie = dict()
     for i in range(len(seq)):
         currentNode = trie
         
         for j in range(i, len(seq)):
-            if seq[j] in currentNode:
-                currentNode = currentNode[ seq[j] ]
-            else
-                newNode = dict()
-                currentNode[ seq[j] ] = Edge(seq[j], j)
+            if seq[j] not in currentNode:
+                newNode=i if j==len(seq)-1 else dict()
+                currentNode[ seq[j] ] = (j, newNode)
+            if j < len(seq)-1:
+                currentNode = currentNode[ seq[j] ][1]
+            else:
                 
-                
+    return trie
+    
+    
+trie = modifiedSuffixTrieConstruction('ATAAATG$')
+print trie
                 
