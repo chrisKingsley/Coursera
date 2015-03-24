@@ -87,6 +87,7 @@ def trieMatching(text, trie):
 # Construct a suffix trie
 def modifiedSuffixTrieConstruction(seq):
     trie = dict()
+    
     for i in range(len(seq)):
         currentNode = trie
         
@@ -96,11 +97,27 @@ def modifiedSuffixTrieConstruction(seq):
                 currentNode[ seq[j] ] = (j, newNode)
             if j < len(seq)-1:
                 currentNode = currentNode[ seq[j] ][1]
-            else:
                 
     return trie
     
     
+def modifiedSuffixTreeConstruction(trie, tree=dict(), start=0, stop=0):
+    if len(trie)==1:
+        tree[]
+        
+    else:
+        for char in trie:
+            
+            tree[ 
+        
+# def modifiedSuffixTreeConstruction(seq):
+    # tree = dict()
+    
+    # for i in range(len(seq)):
+        # currentNode = tree()
+    
+    
 trie = modifiedSuffixTrieConstruction('ATAAATG$')
 print trie
-                
+tree = modifiedSuffixTreeConstruction(trie)
+print tree
