@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os, re, sys
+from collections import Counter
 
 
 # Construct the trie data structure for the passed set of patterns
@@ -99,25 +100,35 @@ def modifiedSuffixTrieConstruction(seq):
                 currentNode = currentNode[ seq[j] ][1]
                 
     return trie
-    
-    
-def modifiedSuffixTreeConstruction(trie, tree=dict(), start=0, stop=0):
-    if len(trie)==1:
-        tree[]
+
+
+def getTrieEdges(trie, edge='', edges=[]):
+    for char, node in trie.iteritems():
+        #print char, node
+        if isinstance(node[1], dict):
+            if len(node[1])>1:
+                edges.append( edge + char )
+                getTrieEdges(node[1], '')
+            else:
+                getTrieEdges(node[1], edge + char)
+        else:
+            edges.append( edge + char )
         
-    else:
-        for char in trie:
-            
-            tree[ 
-        
-# def modifiedSuffixTreeConstruction(seq):
-    # tree = dict()
+    return edges
+
+
+def getLongestRepeat(seq):
+    trie = modifiedSuffixTrieConstruction(seq)
+    edges = getTrieEdges(trie)
     
-    # for i in range(len(seq)):
-        # currentNode = tree()
+    print Counter(edges)
     
     
-trie = modifiedSuffixTrieConstruction('ATAAATG$')
-print trie
-tree = modifiedSuffixTreeConstruction(trie)
-print tree
+    
+# trie = modifiedSuffixTrieConstruction('ATAAATG$')
+# print getTrieEdges(trie)
+
+getLongestRepeat('ATATCGTTTTATCGTT')
+
+# tree = modifiedSuffixTreeConstruction(trie)
+# print tree
