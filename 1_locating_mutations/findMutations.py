@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, re, sys
+import math, os, re, sys
 from collections import Counter
 
 
@@ -80,6 +80,7 @@ def modifiedSuffixTrieConstruction(seq):
     return trie
 
 
+# return the sequence labels for the edges of the passed trie
 def getTrieEdges(trie, edge='', edges=[]):
     for char, node in trie.iteritems():
         #print char, node
@@ -98,6 +99,7 @@ def getTrieEdges(trie, edge='', edges=[]):
 # print getTrieEdges(trie)
     
     
+# return the longest repeated sequence in the passed trie
 def getLongestRepeat(trie, edge='', longRep='', depth=0):
     while len(trie)==1:
         char, node = trie.popitem()
@@ -119,6 +121,7 @@ def getLongestRepeat(trie, edge='', longRep='', depth=0):
 # print getLongestRepeat(trie)  # should be TATCGTT
 
 
+# returns whether the passed sequence is present in the passed trie
 def seqInTrie(trie, seq):
     #print seq
     for i in range(len(seq)):
@@ -133,6 +136,7 @@ def seqInTrie(trie, seq):
     return True
     
     
+# returns the longest shared substring of the passed sequence and trie
 def getLongestSharedSubstring(trie, seq):
     longSeq = ''
     
@@ -150,6 +154,7 @@ def getLongestSharedSubstring(trie, seq):
 # print getLongestSharedSubstring(trie, seq1)
     
     
+# returns the shortest unshared substring of the passed sequence and trie
 def getShortestUnsharedSubstring(trie, seq):
     shortSeq = seq
     
@@ -167,6 +172,7 @@ def getShortestUnsharedSubstring(trie, seq):
 # print getShortestUnsharedSubstring(trie, seq1) # should be CC
 
 
+# returns the suffix array of the passed sequence
 def getSuffixArray(seq):
     suffixArray = []
     for i in range(len(seq)):
@@ -180,5 +186,56 @@ def getSuffixArray(seq):
     
 # suffixArray = getSuffixArray('AACGATAGCGGTAGA$')
 # print ', '.join([ str(x) for x in suffixArray ])
+
+
+# performs the Burroughs-Wheeler transformation of the passed sequence
+def BW_transform(seq):
+    seqArray = ['']*len(seq)
+    retVal = ''
+    
+    for i in range(len(seq)):
+        seqArray[i] = seq[i:] + seq[:i]
+    seqArray.sort()
+    
+    for i in range(len(seqArray)):
+        retVal += seqArray[i][len(seq)-1]
+        
+    return retVal
+    
+# print BW_transform('GCGTGCCTGGTCA$')
+
+
+def getCharCount(char, charDict):
+    count = charDict.get(char, 0) + 1
+    charDict[ char ] = count
+    
+    return count
+
+    
+# performs the Burroughs-Wheeler inverse transformation of the passed sequence
+def BW_inverse(seq):
+    stringPattern = '%%s%%0%dd' % int(math.log10(len(seq))+1)
+    charCounts1, charCounts2, charDict = dict(), dict(), dict()
+    
+    col1 = ''.join(sorted(seq))
+    for i in range(len(seq)):
+        count1 = getCharCount(col1[i], charCounts1)
+        count2 = getCharCount(seq[i], charCounts2)
+        key = stringPattern % (seq[i], count2)
+        val = stringPattern % (col1[i], count1)
+        charDict[ key ] = val
+        
+    retVal, startString = '', stringPattern % ('$', 1)
+    char = startString
+    while True:
+        char = charDict[char]
+        retVal += re.sub('\d', '', char)
+        if char==startString:
+            break
+            
+    return retVal
+
+# print BW_inverse('enwvpeoseu$llt')
+# print BW_inverse('TTCCTAACG$A')
 
 
