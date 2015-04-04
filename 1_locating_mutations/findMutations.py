@@ -239,3 +239,68 @@ def BW_inverse(seq):
 # print BW_inverse('TTCCTAACG$A')
 
 
+# returns the lastToFirst array that contains pointers from character
+# positions in the last column of the BW matrix to the first column
+def getLastToFirstArray(firstCol, lastCol):
+    charPos, charCounts1, charCounts2 = dict(), dict(), dict()
+    lastToFirst = [0] * len(lastCol)
+    stringPattern = '%%s%%0%dd' % int(math.log10(len(firstCol))+1)
+    
+    for i in range(len(firstCol)):
+        count = getCharCount(firstCol[i], charCounts1)
+        key = stringPattern % (firstCol[i], count)
+        charPos[ key ] = i
+        
+    for i in range(len(lastCol)):
+        count = getCharCount(lastCol[i], charCounts2)
+        key = stringPattern % (lastCol[i], count)
+        lastToFirst[i] = charPos[ key ]
+        
+    return lastToFirst
+    
+    
+# returns the number of matches of the pattern in the sequence
+# defined by the lastColumn of the BW matrix
+def BW_match(firstCol, lastCol, pattern, lastToFirst):
+    top, bottom, pos = 0, len(lastCol)-1, len(pattern)-1
+    
+    while top <= bottom:
+        topIndex, bottomIndex = sys.maxint, -1
+        for i in range(top, bottom+1):
+            if pattern[pos]==lastCol[i]:
+                found = True
+                if i < topIndex:
+                    topIndex = i
+                if i > bottomIndex:
+                    bottomIndex = i
+                    
+        if topIndex<sys.maxint and bottomIndex>-1:
+            top = lastToFirst[topIndex]
+            bottom = lastToFirst[bottomIndex]
+        else:
+            return 0
+                
+        pos -= 1
+        if pos < 0:
+            return bottom - top + 1
+                
+            
+
+# performs BW matching on each pattern in patterns against the
+# BW inverse transform of the passed character sequence
+def BW_Matching(seq, patterns):
+    lastCol = seq
+    firstCol = ''.join(sorted(seq))
+    lastToFirst = getLastToFirstArray(firstCol, lastCol)
+    retVal = []
+    
+    for pattern in patterns:
+        numMatch = BW_match(firstCol, lastCol, pattern, lastToFirst)
+        retVal.append( numMatch )
+        
+    return retVal
+        
+# seq = 'TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC'
+# patterns = ['CCT','CAC','GAG','CAG','ATC']
+# print BW_Matching('TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC', patterns)
+
