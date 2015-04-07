@@ -268,7 +268,6 @@ def BW_match(firstCol, lastCol, pattern, lastToFirst):
         topIndex, bottomIndex = sys.maxint, -1
         for i in range(top, bottom+1):
             if pattern[pos]==lastCol[i]:
-                found = True
                 if i < topIndex:
                     topIndex = i
                 if i > bottomIndex:
@@ -304,3 +303,12 @@ def BW_Matching(seq, patterns):
 # patterns = ['CCT','CAC','GAG','CAG','ATC']
 # print BW_Matching('TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC', patterns)
 
+
+
+# QUIZ
+# trie = modifiedSuffixTrieConstruction('TCTGAGCCCTACTGTCGAGAAATATGTATCTCGCCCCCGCAGCTT$')
+# edges = [ x for x in getTrieEdges(trie) if x.endswith('$') ]
+# print len(edges), edges
+
+# print BW_transform('GATTGCTTTT$')
+# print BW_inverse('AT$AAACTTCG')
