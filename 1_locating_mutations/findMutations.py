@@ -319,7 +319,8 @@ def getPartialSuffixArray(seq, k=5):
 # print getPartialSuffixArray('PANAMABANANAS$', 5)
 
 
-# 
+# Return dict containing the first position of each character in the
+# first column of the BW matrix
 def getFirstOccurrenceDict(seq):
     retVal = {}
     for i in range(len(seq)):
@@ -334,41 +335,43 @@ def getFirstOccurrenceDict(seq):
 
 #
 def getCountMatrix(seq, k=5):
-    retVal = []
     counts = [0]*4
+    retVal = [counts[:]]
     
     for i in range(len(seq)):
-        if i % k==0:
-            retVal.append(counts[:])
         idx = BASE_DICT[ seq[i] ]
         counts[ idx ] += 1
+        if i % k==0:
+            retVal.append(counts[:])
             
     return retVal
         
         
 # Burrough's Wheeler matching using count matrices
-def BW_match2(firstOccurrence, lastCol, pattern, count):
+def BW_match2(firstOccurrence, lastCol, pattern, count, suffixArray):
     top, bottom, pos = 0, len(lastCol)-1, len(pattern)-1
+    retVal = []
     
     while top <= bottom:
-        topIndex, bottomIndex = sys.maxint, -1
-        for i in range(top, bottom+1):
-            if pattern[pos]==lastCol[i]:
-                found = True
-                if i < topIndex:
-                    topIndex = i
-                if i > bottomIndex:
-                    bottomIndex = i
-                    
-        if topIndex<sys.maxint and bottomIndex>-1:
-            top = lastToFirst[topIndex]
-            bottom = lastToFirst[bottomIndex]
+        char = pattern[pos]
+        idx = BASE_DICT[char]
+        topCount = count[top][idx]
+        bottomCount = count[bottom+1][idx]
+        print top, bottom, topCount, bottomCount, idx, char
+        if topCount!=bottomCount:
+            top = firstOccurrence[char] + topCount
+            bottom = firstOccurrence[char] + bottomCount - 1
+            print char, top, bottom
         else:
             return 0
                 
         pos -= 1
         if pos < 0:
-            return bottom - top + 1
+            # for i in range(top, bottom+1):
+                # startPos = getStartPos(char, i)
+                # retVal.append(startPost)
+            return retVal
+    
     
 # performs less memory intensive BW matching on each pattern in
 # patterns against the BW inverse transform of the passed character
@@ -377,24 +380,23 @@ def BW_Matching2(seq, patterns, k=5):
     lastCol = BW_transform(seq)
     firstOccurrence = getFirstOccurrenceDict(lastCol)
     suffixArray = getPartialSuffixArray(seq, k=k)
-    count = getCountMatrix(lastCol, k=k)
-    
+    count = getCountMatrix(lastCol, k=1)
     retVal = []
     
     for pattern in patterns:
-        matchPos = BW_match2(firstOccurrence, lastCol, pattern, count)
+        matchPos = BW_match2(firstOccurrence, lastCol, pattern, count, suffixArray)
         retVal.append( matchPos )
         
     return retVal
     
     
 seq = 'AATCGGGTTCAATCGGGGT'
-# patterns = ['ATCG','GGGT']
-# BW_Matching2(seq, patterns)
+patterns = ['ATCG','GGGT']
+print BW_Matching2(seq, ['ATCG'])
 
-print getCountMatrix(seq)
-print getFirstOccurrenceDict(seq)
-print BW_transform(seq)
+# print getCountMatrix(seq)
+# print getFirstOccurrenceDict(seq)
+# print BW_transform(seq)
 
 
 # QUIZ
