@@ -270,7 +270,6 @@ def BW_match(firstCol, lastCol, pattern, lastToFirst):
         topIndex, bottomIndex = sys.maxint, -1
         for i in range(top, bottom+1):
             if pattern[pos]==lastCol[i]:
-                found = True
                 if i < topIndex:
                     topIndex = i
                 if i > bottomIndex:
@@ -397,3 +396,11 @@ print getCountMatrix(seq)
 print getFirstOccurrenceDict(seq)
 print BW_transform(seq)
 
+
+# QUIZ
+# trie = modifiedSuffixTrieConstruction('TCTGAGCCCTACTGTCGAGAAATATGTATCTCGCCCCCGCAGCTT$')
+# edges = [ x for x in getTrieEdges(trie) if x.endswith('$') ]
+# print len(edges), edges
+
+# print BW_transform('GATTGCTTTT$')
+# print BW_inverse('AT$AAACTTCG')
