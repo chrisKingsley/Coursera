@@ -51,8 +51,52 @@ def getDistanceMatrix(adjFile):
     
     return distMat
     
+# distMat = getDistanceMatrix('adjToDistMat.txt')
+# print distMat
 
-distMat = getDistanceMatrix('adjToDistMat.txt')
-print distMat
 
+# reads contents of file into a 2D distance matrix
+def readDistMatFile(filePath, readNodeNum=False):
+    infile = open(filePath, 'r')
+    n = int(infile.readline())
+    if readNodeNum:
+        j = int(infile.readline())
+    distMat = []
+    
+    for i in range(n):
+        vals = infile.readline().rstrip().split()
+        distMat.append([ int(x) for x in vals ])
+    infile.close()
+    
+    if readNodeNum:
+        return distMat, j
+    else:
+        return distMat
+
+        
+# gets the limb length for a given node and distance matrix 
+def getLimbLength(distMat, j):
+    limbLength = sys.maxint
+    
+    for i in range(len(distMat)):
+        for k in range(len(distMat)):
+            if i==j or i==k or j==k:
+                continue
+            dist = (distMat[i][j]+distMat[j][k]-distMat[i][k])/2
+            if dist < limbLength:
+                limbLength = dist
+                
+    return limbLength
+
+# distMat, j = readDistMatFile('distMat.txt', True)
+# print getLimbLength(distMat, j)
+
+
+# def additivePhylogeny(distMat):
+    # if(len(distMat)==2):
+        # return tree
+        
+    # limbLength = getLimbLength(distMat, len(distMat)-1)
+    
+    # for j in range(len(distMat))
     
