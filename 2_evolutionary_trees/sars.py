@@ -58,7 +58,7 @@ def getDistanceMatrix(adjFile):
 # reads contents of file into a 2D distance matrix
 def readDistMatFile(filePath, readNodeNum=False):
     infile = open(filePath, 'r')
-    n = int(infile.readline())
+    n = int(infile.readline().rstrip())
     if readNodeNum:
         j = int(infile.readline())
     distMat = []
@@ -92,11 +92,69 @@ def getLimbLength(distMat, j):
 # print getLimbLength(distMat, j)
 
 
-# def additivePhylogeny(distMat):
-    # if(len(distMat)==2):
-        # return tree
+def getAttachmentNodes(d, j):
+    for i in range(j):
+        for k in range(j):
+            if i!=k and d[i][k]==d[i][j] + d[j][k]:
+                return i,k
+
+def attachNode(retVal, d, i, j, limbLength, numNodes):
+    dist = d[i][j]
+    print 'retVal2', retVal
+    # find existing node at the correct ditance
+    for k in range(j):
+        if retVal.get('%s:%s' % (i, k), -1)==dist:
+            retVal[ '%s:%s' % (k, j) ] = limbLength
+            retVal[ '%s:%s' % (j, k) ] = limbLength
+            return numNodes
+            
+    # add new node since exiting node not found
+    print 'added node %d at %d between nodes %d & %d' % (numNodes,dist, i, k)
+    retVal[ '%s:%s' % (i, numNodes) ] = dist
+    retVal[ '%s:%s' % (numNodes, i) ] = dist
+    retVal[ '%s:%s' % (k, numNodes) ] = d[i][k] - dist
+    retVal[ '%s:%s' % (numNodes, k) ] = d[i][k] - dist
+    retVal[ '%s:%s' % (j, numNodes) ] = limbLength
+    retVal[ '%s:%s' % (numNodes, j) ] = limbLength
+    if '%s:%s' % (i, k) in retVal: del retVal[ '%s:%s' % (i, k) ]
+    if '%s:%s' % (k, i) in retVal: del retVal[ '%s:%s' % (k, i) ]
+    
+    return numNodes + 1
+
+def additivePhylogeny(distMat, n, retVal=dict(), numNodes=None):
+    if numNodes is None: numNodes = len(distMat)
+    # exit recursion when only two nodes left
+    if(n==2):
+        retVal['0:1'] = distMat[0][1]
+        retVal['1:0'] = distMat[1][0]
+        return retVal, numNodes
         
-    # limbLength = getLimbLength(distMat, len(distMat)-1)
+    # copy n rows/cols of distance matrix
+    d = [ [distMat[i][j] for i in range(n)] for j in range(n) ]
+    print d
+    # create the bald tree, subtracting limb length of 
+    # the last entry in the distance matrix
+    limbLength = getLimbLength(d, n-1)
+    print 'limbLength', limbLength
+    for j in range(n):
+        if j!=n-1:
+            d[j][n-1] = d[j][n-1]-limbLength
+            d[n-1][j] = d[j][n-1]
+    print d
     
-    # for j in range(len(distMat))
+    # get nodes between which node n should be placed
+    i, k = getAttachmentNodes(d, n-1)
+    print 'AttachmentNodes',i,k, ' dist', d[i][n-1]
     
+    print 'retVal0', retVal
+    retVal, numNodes = additivePhylogeny(d, n-1, retVal, numNodes)
+    print 'retVal1', retVal
+    numNodes = attachNode(retVal, d, i, n-1, limbLength, numNodes)
+    
+    return retVal, numNodes
+    
+distMat, j = readDistMatFile('distMat.txt', True)
+tree, numNodes = additivePhylogeny(distMat, len(distMat))
+for key in sorted(tree):
+    print '%s->%s' % (key, tree[key])
+ 
