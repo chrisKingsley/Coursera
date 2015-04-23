@@ -121,6 +121,14 @@ def attachNode(retVal, d, i, j, limbLength, numNodes):
     
     return numNodes + 1
 
+    
+def addToMatrixRowCol(distMat, n, val):
+    for i in range(n):
+        if i!=n-1:
+            distMat[i][n-1] = distMat[i][n-1]+val
+            distMat[n-1][i] = distMat[i][n-1]
+
+
 def additivePhylogeny(distMat, n, retVal=dict(), numNodes=None):
     if numNodes is None: numNodes = len(distMat)
     # exit recursion when only two nodes left
@@ -129,27 +137,21 @@ def additivePhylogeny(distMat, n, retVal=dict(), numNodes=None):
         retVal['1:0'] = distMat[1][0]
         return retVal, numNodes
         
-    # copy n rows/cols of distance matrix
-    d = [ [distMat[i][j] for i in range(n)] for j in range(n) ]
-    print d
     # create the bald tree, subtracting limb length of 
     # the last entry in the distance matrix
-    limbLength = getLimbLength(d, n-1)
-    print 'limbLength', limbLength
-    for j in range(n):
-        if j!=n-1:
-            d[j][n-1] = d[j][n-1]-limbLength
-            d[n-1][j] = d[j][n-1]
-    print d
+    limbLength = getLimbLength(distMat, n-1)
+    addToMatrixRowCol(distMat, n, -limbLength)
     
     # get nodes between which node n should be placed
-    i, k = getAttachmentNodes(d, n-1)
-    print 'AttachmentNodes',i,k, ' dist', d[i][n-1]
+    i, k = getAttachmentNodes(distMat, n-1)
+    print 'AttachmentNodes',i,k, ' dist', distMat[i][n-1]
     
-    print 'retVal0', retVal
-    retVal, numNodes = additivePhylogeny(d, n-1, retVal, numNodes)
-    print 'retVal1', retVal
-    numNodes = attachNode(retVal, d, i, n-1, limbLength, numNodes)
+    # call recursive function on shortened distance matrix
+    retVal, numNodes = additivePhylogeny(distMat, n-1, retVal, numNodes)
+    
+    # regenerate the original distance matrix and add to tree
+    addToMatrixRowCol(distMat, n, limbLength)
+    numNodes = attachNode(retVal, distMat, i, n-1, limbLength, numNodes)
     
     return retVal, numNodes
     
