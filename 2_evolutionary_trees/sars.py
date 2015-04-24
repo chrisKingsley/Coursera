@@ -7,6 +7,10 @@ import math, os, random, re, sys
 def getKey(i, j):
     return '%s:%s' % (i,j)
     
+def inverseKey(key):
+    i,j = key.split(':')
+    return '%s:%s' % (j,i)
+    
     
 # update distances in the adjacency hash using the Floyd-Warshall algorithm
 def updateAdjDistances(adjDict, i, j, k):
@@ -75,11 +79,11 @@ def readDistMatFile(filePath, readNodeNum=False):
 
         
 # gets the limb length for a given node and distance matrix 
-def getLimbLength(distMat, j):
+def getLimbLength(distMat, n, j):
     limbLength = sys.maxint
     
-    for i in range(len(distMat)):
-        for k in range(len(distMat)):
+    for i in range(n):
+        for k in range(n):
             if i==j or i==k or j==k:
                 continue
             dist = (distMat[i][j]+distMat[j][k]-distMat[i][k])/2
@@ -98,26 +102,89 @@ def getAttachmentNodes(d, j):
             if i!=k and d[i][k]==d[i][j] + d[j][k]:
                 return i,k
 
-def attachNode(retVal, d, i, j, limbLength, numNodes):
-    dist = d[i][j]
-    print 'retVal2', retVal
-    # find existing node at the correct ditance
-    for k in range(j):
-        if retVal.get('%s:%s' % (i, k), -1)==dist:
-            retVal[ '%s:%s' % (k, j) ] = limbLength
-            retVal[ '%s:%s' % (j, k) ] = limbLength
-            return numNodes
+# def attachNode_old(tree, d, i, j, limbLength, numNodes):
+    # dist = d[i][j]
+    # print 'tree1', sorted(tree.items())
+    # # find existing node at the correct distance
+    # for k in range(j):
+        # if tree.get(getKey(i, k), -1)==dist:
+            # tree[ getKey(k, j) ] = limbLength
+            # tree[ getKey(j, k) ] = limbLength
+            # return numNodes
             
-    # add new node since exiting node not found
-    print 'added node %d at %d between nodes %d & %d' % (numNodes,dist, i, k)
-    retVal[ '%s:%s' % (i, numNodes) ] = dist
-    retVal[ '%s:%s' % (numNodes, i) ] = dist
-    retVal[ '%s:%s' % (k, numNodes) ] = d[i][k] - dist
-    retVal[ '%s:%s' % (numNodes, k) ] = d[i][k] - dist
-    retVal[ '%s:%s' % (j, numNodes) ] = limbLength
-    retVal[ '%s:%s' % (numNodes, j) ] = limbLength
-    if '%s:%s' % (i, k) in retVal: del retVal[ '%s:%s' % (i, k) ]
-    if '%s:%s' % (k, i) in retVal: del retVal[ '%s:%s' % (k, i) ]
+    # # add new node since exiting node not found
+    # print 'added node %d at distance %d between nodes %d & %d' % \
+        # (numNodes,dist, i, k)
+    # tree[ getKey(i, numNodes) ] = dist
+    # tree[ getKey(numNodes, i) ] = dist
+    # tree[ getKey(k, numNodes) ] = d[i][k] - dist
+    # tree[ getKey(numNodes, k) ] = d[i][k] - dist
+    # tree[ getKey(j, numNodes) ] = limbLength
+    # tree[ getKey(numNodes, j) ] = limbLength
+    # if getKey(i, k) in tree: del tree[ getKey(i, k) ]
+    # if getKey(k, i) in tree: del tree[ getKey(k, i) ]
+    
+    # return numNodes + 1
+    
+    
+# def getPath (tree, i, k, path):
+    # nodes = [ x for x in tree.keys() if x.startswith(str(i)+":") ]
+    # print "i:%s k:%s path:%s nodes:%s" % (i,k,path,nodes)
+    # for node in nodes:
+        # print 'path:%s node:%s' % (path, node)
+        # if inverseKey(node) not in path:
+            # path.append(node)
+            # print 'node', node
+            # if node.endswith(':'+str(k)):
+                # print 'final path:%s last node:%s' % (path, node)
+                # return path
+            # l = int(node.split(':')[1])
+            # getPath(tree, l, k, path)
+            # path.pop()
+    
+    
+def getPathInTree(tree, i, k, path):
+    if len(path)>0 and path[-1].endswith(':'+str(k)):
+        return path
+    
+    nodes = [ x for x in tree.keys() if x.startswith(str(i)+":") ]
+    print "i:%s k:%s path:%s nodes:%s" % (i,k,path,nodes)
+    for node in nodes:
+        if inverseKey(node) not in path:
+            path.append(node)
+            l = int(node.split(':')[1])
+            path = getPathInTree(tree, l, k, path)
+            if not path[-1].endswith(':'+str(k)):
+                path.pop()
+            
+    return path
+    
+    
+def attachNode(tree, d, i, j, k, dist, limbLength, numNodes):
+    path = getPathInTree(tree, i, k, [])
+    print 'final path:%s' % path
+    print 'tree1', sorted(tree.items())
+    
+    for node in path:
+        i, j =[ int(x) for x in node.split(':') ]
+        print 'node:%s dist:%s' % (node, dist)
+        if dist==tree[node]:
+            tree[ getKey(k, j) ] = limbLength
+            tree[ getKey(j, k) ] = limbLength
+            break
+        elif dist < tree[node]:
+            numNodes += 1
+            tree[ getKey(i, numNodes) ] = dist
+            tree[ getKey(numNodes, i) ] = dist
+            tree[ getKey(k, numNodes) ] = d[i][k] - dist
+            tree[ getKey(numNodes, k) ] = d[i][k] - dist
+            tree[ getKey(j, numNodes) ] = limbLength
+            tree[ getKey(numNodes, j) ] = limbLength
+            if getKey(i, k) in tree: del tree[ getKey(i, k) ]
+            if getKey(k, i) in tree: del tree[ getKey(k, i) ]
+            break
+            
+        dist = dist - tree[node]
     
     return numNodes + 1
 
@@ -129,31 +196,33 @@ def addToMatrixRowCol(distMat, n, val):
             distMat[n-1][i] = distMat[i][n-1]
 
 
-def additivePhylogeny(distMat, n, retVal=dict(), numNodes=None):
+def additivePhylogeny(distMat, n, tree=dict(), numNodes=None):
     if numNodes is None: numNodes = len(distMat)
     # exit recursion when only two nodes left
     if(n==2):
-        retVal['0:1'] = distMat[0][1]
-        retVal['1:0'] = distMat[1][0]
-        return retVal, numNodes
+        tree['0:1'] = distMat[0][1]
+        tree['1:0'] = distMat[1][0]
+        return tree, numNodes
         
     # create the bald tree, subtracting limb length of 
     # the last entry in the distance matrix
-    limbLength = getLimbLength(distMat, n-1)
+    limbLength = getLimbLength(distMat, n, n-1)
+    print 'node %d limbLength %0.2f' % (n-1, limbLength)
     addToMatrixRowCol(distMat, n, -limbLength)
+    print distMat
     
-    # get nodes between which node n should be placed
+    # call recursive function on reduced distance matrix
+    tree, numNodes = additivePhylogeny(distMat, n-1, tree, numNodes)
+    
+    # get nodes between which node n should be placed and add node to tree
     i, k = getAttachmentNodes(distMat, n-1)
     print 'AttachmentNodes',i,k, ' dist', distMat[i][n-1]
-    
-    # call recursive function on shortened distance matrix
-    retVal, numNodes = additivePhylogeny(distMat, n-1, retVal, numNodes)
-    
-    # regenerate the original distance matrix and add to tree
+    numNodes = attachNode(tree, distMat, i, n-1, k, distMat[i][n-1], limbLength, numNodes)
+    print 'tree2', sorted(tree.items())
+    # regenerate the original distance matrix 
     addToMatrixRowCol(distMat, n, limbLength)
-    numNodes = attachNode(retVal, distMat, i, n-1, limbLength, numNodes)
     
-    return retVal, numNodes
+    return tree, numNodes
     
 distMat, j = readDistMatFile('distMat.txt', True)
 tree, numNodes = additivePhylogeny(distMat, len(distMat))
