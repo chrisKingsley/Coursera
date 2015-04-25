@@ -169,8 +169,8 @@ def additivePhylogeny(distMat, n, tree=dict(), numNodes=None):
         tree['1:0'] = distMat[1][0]
         return tree, numNodes
         
-    # create the bald tree, subtracting limb length of 
-    # the last entry in the distance matrix
+    # create the bald tree, subtracting limb length of the 
+    # last entry in the distance matrix from its rows/cols
     limbLength = getLimbLength(distMat, n, n-1)
     addToMatrixRowCol(distMat, n, -limbLength)
     
@@ -186,10 +186,45 @@ def additivePhylogeny(distMat, n, tree=dict(), numNodes=None):
     
     return tree, numNodes
     
-distMat, j = readDistMatFile('distMat.txt', True)
-tree, numNodes = additivePhylogeny(distMat, len(distMat))
-for key in sorted(tree):
-    i,j = key.split(':')
-    print '%s->%s:%s' % (i,j, tree[key])
+# distMat, j = readDistMatFile('distMat.txt', True)
+# tree, numNodes = additivePhylogeny(distMat, len(distMat))
+# for key in sorted(tree):
+    # print '%s:%s' % (re.sub(':','->', key), tree[key])
 
+
+def getClusterDist(distMat, nodes1, nodes2):
+    dist = 0
+    
+    for node1 in nodes1:
+        for node2 in nodes2:
+            dist += distMat[node1][node2]
+            
+    return dist/(len(nodes1)*len(nodes2))
+    
+def closestClusters(distMat, clusters):
+    minDist = sys.maxint
+    
+    for i in range(len(clusters)-1):
+        nodes1 = clusters[i]
+        for j in range(i+1, len(clusters)):
+            nodes2 = clusters[j]
+            dist = getClusterDist(distMat, nodes1, nodes2)
+            if dist < minDist:
+                minDist = dist
+                cluster1 = nodes1
+                cluster2 = nodes2
+                
+    return cluster1, cluster2, minDist
+
+
+def upgma(distMat, n):
+    tree = dict()
+    clusters = [ {x} for x in range(n) ]
+    
+    cluster1, cluster2, minDist = closestClusters(distMat, clusters)
+    print cluster1, cluster2, minDist
+     
+distMat = readDistMatFile('distMat2.txt', False)
+
+upgma(distMat, len(distMat))
 
