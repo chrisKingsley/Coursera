@@ -329,7 +329,32 @@ def neighborJoining(distMat, labels, tree=dict()):
     
     return tree
     
-distMat = readDistMatFile('distMat3.txt', False)
-tree = neighborJoining(distMat, range(len(distMat)))
-for key in sorted(tree):
-    print '%s:%s' % (re.sub(':','->', key), tree[key])
+# distMat = readDistMatFile('distMat3.txt', False)
+# tree = neighborJoining(distMat, range(len(distMat)))
+# for key in sorted(tree):
+    # print '%s:%s' % (re.sub(':','->', key), tree[key])
+    
+    
+def readSeqTree(treeFile):
+    infile = open(treeFile, 'r')
+    numLeaves = int(infile.readline())
+    seqTree = ['']*(2*numLeaves)
+    
+    for line in infile:
+        parentNode, seq = line.rstrip().split('->')
+        if re.search('[ACGT]', seq):
+            parentNode = int(parentNode) % numLeaves + numLeaves/2
+            if not seqTree[2*parentNode]:
+                seqTree[2*parentNode] = seq
+            else:
+                seqTree[2*parentNode+1] = seq
+
+    
+    infile.close()
+    
+    return seqTree, numLeaves
+    
+
+
+tree, n = readSeqTree('treeSeqs.txt')
+print tree, n
