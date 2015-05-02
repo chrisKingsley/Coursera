@@ -2,6 +2,8 @@
 
 import math, os, random, re, sys
 
+BASES = ['A','C','G','T']
+
 
 # get the key for the adjacency hash for nodes i,j
 def getKey(i, j):
@@ -349,12 +351,78 @@ def readSeqTree(treeFile):
             else:
                 seqTree[2*parentNode+1] = seq
 
-    
     infile.close()
     
     return seqTree, numLeaves
     
+    
+def getSmallParsimonyScores(tree, numLeaves, charIdx):
+    scores = [[] for x in range(2*numLeaves) ]
+    
+    # per base score for leaves
+    for i in range(numLeaves, 2*numLeaves):
+        for j in range(len(BASES)):
+            dist = 0 if tree[i][charIdx]==BASES[j] else sys.maxint
+            scores[i].append( dist )
+    
+    # per base score for internal nodes
+    for i in range(numLeaves-1, 0, -1):
+        for j in range(len(BASES)):
+            childScores1, childScores2 = [], []
+            for k in range(len(BASES)):
+                distPenalty = 0 if j==k else 1
+                childScores1.append(scores[2*i][k] + distPenalty)
+                childScores2.append(scores[2*i+1][k] + distPenalty)
+            scores[i].append(min(childScores1) + min(childScores2))
+    
+    return scores
 
+
+def hammingDist(seq1, seq2):
+    dist = 0
+    for i in range(len(seq1)):
+        if seq1[i]!=seq2[i]:
+            dist += 1
+    
+    return dist
+    
+    
+def updateTreeSeqs(tree, numLeaves, scores, charIdx):
+    # assign character to root
+    baseIdx = scores[1].index(min(scores[1]))
+    tree[1] += BASES[baseIdx]
+    
+    # assign characters to internal nodes
+    for i in range(2, numLeaves):
+        baseScores = []
+        for j in range(len(BASES)):
+            dist = 0 if tree[i/2][charIdx]==BASES[j] else 1
+            baseScores.append( scores[i][j] + dist )
+            # baseScores.append( scores[i][j] )
+        baseIdx = baseScores.index(min(baseScores))
+        tree[i] += BASES[baseIdx]
+    
+    
+def smallParsimony(tree, numLeaves):
+    for charIdx in range(len(tree[-1])):
+        scores = getSmallParsimonyScores(tree, numLeaves, charIdx)
+        #print scores
+        updateTreeSeqs(tree, numLeaves, scores, charIdx)
+        
+    parsScore = 0
+    for i in range(1,numLeaves):
+        parsScore += hammingDist(tree[i], tree[2*i]) + \
+                     hammingDist(tree[i], tree[2*i+1])
+    
+    return tree, parsScore
 
 tree, n = readSeqTree('treeSeqs.txt')
-print tree, n
+tree, parsScore = smallParsimony(tree, n)
+print parsScore
+for i in range(1, n):
+    dist = hammingDist(tree[i], tree[2*i])
+    print '%s->%s:%s' % (tree[i], tree[2*i], dist)
+    print '%s->%s:%s' % (tree[2*i], tree[i], dist)
+    dist = hammingDist(tree[i], tree[2*i+1])
+    print '%s->%s:%s' % (tree[i], tree[2*i+1], dist)
+    print '%s->%s:%s' % (tree[2*i+1], tree[i], dist)
