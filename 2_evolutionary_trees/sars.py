@@ -336,48 +336,133 @@ def neighborJoining(distMat, labels, tree=dict()):
 # for key in sorted(tree):
     # print '%s:%s' % (re.sub(':','->', key), tree[key])
     
+  
+# class definition of a node in a binary tree of sequences  
+class Node():
+    def __init__(self):
+        self.parent = None
+        self.child1 = None
+        self.child2 = None
+        self.seq = ''
     
-def readSeqTree(treeFile):
+    def isLeaf(self):
+        return self.child1 is None and \
+               self.child2 is None
+    
+    def isHeadNode(self):
+        return self.parent is None
+        
+    def addChild(self, child):
+        if self.child1 is None:
+            self.child1 = child
+        elif self.child2 is None:
+            self.child2 = child
+        else:
+            print 'adding child %s to node with two children' % \
+                  child
+            sys.exit()
+            
+    def __repr__(self):
+        return 'parent:%s child1:%s child2:%s seq:%s' % \
+               (self.parent, self.child1, self.child2, self.seq)
+        
+# read rooted tree from file       
+def readRootedSeqTree(treeFile, headNode=True):
     infile = open(treeFile, 'r')
     numLeaves = int(infile.readline())
-    seqTree = ['']*(2*numLeaves)
+    tree = dict()
+    leafNum = 0
     
     for line in infile:
-        parentNode, seq = line.rstrip().split('->')
-        if re.search('[ACGT]', seq):
-            parentNode = int(parentNode) % numLeaves + numLeaves/2
-            if not seqTree[2*parentNode]:
-                seqTree[2*parentNode] = seq
+        if re.search('[ACGT]', line):
+            parentNode, seq = line.rstrip().split('->')
+            node = Node()
+            node.seq = seq
+            node.parent = parentNode
+            tree[ str(leafNum) ] = node
+            if parentNode in tree:
+                parent = tree[parentNode]
             else:
-                seqTree[2*parentNode+1] = seq
-
+                parent = Node()
+                tree[parentNode] = parent
+            parent.addChild( str(leafNum) )
+            leafNum += 1
+        else:
+            parentNode, childNode = line.rstrip().split('->')
+            if parentNode in tree:
+                node = tree[parentNode]
+            else:
+                node = Node()
+                tree[parentNode] = node
+            node.addChild(childNode)
+                      
+            if childNode in tree:
+                node = tree[childNode]
+            else:
+                node = Node()
+                tree[childNode] = node
+            node.parent = parentNode
+            
     infile.close()
     
-    return seqTree, numLeaves
+    if headNode:
+        for nodeNum in tree:
+            if tree[nodeNum].isHeadNode():
+                return tree, numLeaves, nodeNum
+                
+    return tree, numLeaves
     
     
+# returns true if the passed node has no scores but both its
+# children have scores
+def nodeIsRipe(nodeNum, tree, scores):
+    if len(scores[ nodeNum ]) > 0:
+        return False
+        
+    node = tree[ nodeNum ]
+    if len(scores[ node.child1 ])==0 or len(scores[ node.child2 ])==0:
+        return False
+        
+    return True
+    
+    
+# returns the scores for each possible base of the nodes in the passed
+# tree at the given index in the sequences
 def getSmallParsimonyScores(tree, numLeaves, charIdx):
-    scores = [[] for x in range(2*numLeaves) ]
+    scores = { str(x):[] for x in range(len(tree)) }
     
     # per base score for leaves
-    for i in range(numLeaves, 2*numLeaves):
+    for nodeNum in range(numLeaves):
+        node = tree[ str(nodeNum) ]
         for j in range(len(BASES)):
-            dist = 0 if tree[i][charIdx]==BASES[j] else sys.maxint
-            scores[i].append( dist )
+            dist = 0 if node.seq[charIdx]==BASES[j] else sys.maxint
+            scores[ str(nodeNum) ].append( dist )
     
     # per base score for internal nodes
-    for i in range(numLeaves-1, 0, -1):
-        for j in range(len(BASES)):
-            childScores1, childScores2 = [], []
-            for k in range(len(BASES)):
-                distPenalty = 0 if j==k else 1
-                childScores1.append(scores[2*i][k] + distPenalty)
-                childScores2.append(scores[2*i+1][k] + distPenalty)
-            scores[i].append(min(childScores1) + min(childScores2))
-    
+    ripeNodes = { str(x) for x in range(numLeaves, len(tree)) }
+    while len(ripeNodes) > 0:
+        nodesToSearch = list(ripeNodes)
+        #print 'nodesToSearch:', nodesToSearch
+        for nodeNum in nodesToSearch:
+            
+            if nodeIsRipe(nodeNum, tree, scores):
+                node = tree[ nodeNum ]
+                ripeNodes.remove(nodeNum)
+                # print 'ripe node:%s child1:%s child2:%s' % (nodeNum, node.child1, node.child2)
+                for j in range(len(BASES)):
+                    child1_score = scores[ node.child1 ]
+                    child2_score = scores[ node.child2 ]
+                    baseScores1, baseScores2 = [], []
+                    for k in range(len(BASES)):
+                        distPenalty = 0 if j==k else 1
+                        baseScores1.append(child1_score[k] + distPenalty)
+                        baseScores2.append(child2_score[k] + distPenalty)
+                    scores[nodeNum].append(min(baseScores1) + min(baseScores2))
+    #print scores
     return scores
 
 
+# returns the Hamming distance between the two passed sequences
 def hammingDist(seq1, seq2):
     dist = 0
     for i in range(len(seq1)):
@@ -387,42 +472,243 @@ def hammingDist(seq1, seq2):
     return dist
     
     
-def updateTreeSeqs(tree, numLeaves, scores, charIdx):
-    # assign character to root
-    baseIdx = scores[1].index(min(scores[1]))
-    tree[1] += BASES[baseIdx]
+# updates the sequences in a node at the passed character
+# index based on the passed scores
+def updateNodeSeqs(tree, parentNodeNum, scores, charIdx):
+    parentNode = tree[ parentNodeNum ]
+    childNodeNums = [ parentNode.child1, parentNode.child2 ]
     
-    # assign characters to internal nodes
-    for i in range(2, numLeaves):
+    for childNodeNum in childNodeNums:
+        childNode = tree[ childNodeNum ]
+        if childNode.isLeaf():
+            continue
+            
         baseScores = []
-        for j in range(len(BASES)):
-            dist = 0 if tree[i/2][charIdx]==BASES[j] else 1
-            baseScores.append( scores[i][j] + dist )
-            # baseScores.append( scores[i][j] )
+        for i in range(len(BASES)):
+            dist = 0 if parentNode.seq[charIdx]==BASES[i] else 1
+            baseScores.append( scores[ childNodeNum ][i] + dist )
         baseIdx = baseScores.index(min(baseScores))
-        tree[i] += BASES[baseIdx]
+        
+        childNode.seq += BASES[baseIdx]
+        updateNodeSeqs(tree, childNodeNum, scores, charIdx)
+
+# update the sequences over all nodes in the tree at the specified
+# index in the sequences
+def updateTreeSeqs(tree, numLeaves, scores, charIdx, headNode):
+    # assign character to root
+    node = tree[ headNode ]
+    baseIdx = scores[ headNode ].index(min(scores[ headNode ]))
+    node.seq += BASES[baseIdx]
+
+    # assign characters to internal nodes
+    updateNodeSeqs(tree, headNode, scores, charIdx)
     
-    
-def smallParsimony(tree, numLeaves):
-    for charIdx in range(len(tree[-1])):
+# returns the most parsimonious set of sequences for the internal
+# nodes of the passed tree with the passed head node
+def smallParsimony(tree, numLeaves, headNode):
+    for charIdx in range(len(tree['0'].seq)):
         scores = getSmallParsimonyScores(tree, numLeaves, charIdx)
-        #print scores
-        updateTreeSeqs(tree, numLeaves, scores, charIdx)
+        updateTreeSeqs(tree, numLeaves, scores, charIdx, headNode)
         
     parsScore = 0
-    for i in range(1,numLeaves):
-        parsScore += hammingDist(tree[i], tree[2*i]) + \
-                     hammingDist(tree[i], tree[2*i+1])
+    for nodeNum in tree:
+        node = tree[ nodeNum ]
+        if not node.isLeaf():
+            childNode1 = tree[ node.child1 ]
+            childNode2 = tree[ node.child2 ]
+            parsScore += hammingDist(node.seq, childNode1.seq) + \
+                         hammingDist(node.seq, childNode2.seq)
     
     return tree, parsScore
 
-tree, n = readSeqTree('treeSeqs.txt')
-tree, parsScore = smallParsimony(tree, n)
-print parsScore
-for i in range(1, n):
-    dist = hammingDist(tree[i], tree[2*i])
-    print '%s->%s:%s' % (tree[i], tree[2*i], dist)
-    print '%s->%s:%s' % (tree[2*i], tree[i], dist)
-    dist = hammingDist(tree[i], tree[2*i+1])
-    print '%s->%s:%s' % (tree[i], tree[2*i+1], dist)
-    print '%s->%s:%s' % (tree[2*i+1], tree[i], dist)
+
+# prints the sequences and Hamming distances of all nodes in the passed tree    
+def printTree(tree, headNodeNum=None):
+    for nodeNum in tree:
+        node = tree[ nodeNum ]
+        if headNodeNum is not None and nodeNum==headNodeNum:
+            childNode1 = tree[ node.child1 ]
+            childNode2 = tree[ node.child2 ]
+            dist = hammingDist(childNode1.seq, childNode2.seq)
+            print '%s->%s:%s' % (childNode1.seq, childNode2.seq, dist)
+            print '%s->%s:%s' % (childNode2.seq, childNode1.seq, dist)
+        elif not node.isLeaf():
+            childNode1 = tree[ node.child1 ]
+            childNode2 = tree[ node.child2 ]
+            dist = hammingDist(node.seq, childNode1.seq)
+            print '%s->%s:%s' % (node.seq, childNode1.seq, dist)
+            print '%s->%s:%s' % (childNode1.seq, node.seq, dist)
+            dist = hammingDist(node.seq, childNode2.seq)
+            print '%s->%s:%s' % (node.seq, childNode2.seq, dist)
+            print '%s->%s:%s' % (childNode2.seq, node.seq, dist)
+
+# tree, numLeaves, headNode = readRootedSeqTree('treeSeqs.txt')
+# tree, parsScore = smallParsimony(tree, numLeaves, headNode)
+# print parsScore
+# printTree(tree)
+
+
+# adds internal nodes to unrooted tree with added head node
+def addInternalNode(tree, parentNodeNum, childNodeNum, edges):
+    if childNodeNum in tree:
+        return
+    
+    newNode = Node()
+    newNode.parent = parentNodeNum
+    tree[ childNodeNum ] = newNode
+    
+    for edge in edges:
+        node1, node2 = edge.split('->')
+        if node1==childNodeNum and node2!=parentNodeNum:
+            newNode.addChild( node2 )
+            if newNode.child1 is not None and newNode.child2 is not None:
+                break
+
+    edges.remove('%s->%s' % (childNodeNum, newNode.child1))
+    edges.remove('%s->%s' % (childNodeNum, newNode.child2))
+    
+    addInternalNode(tree, childNodeNum, newNode.child1, edges)
+    addInternalNode(tree, childNodeNum, newNode.child2, edges)
+
+
+# read unrooted tree from file and add head node
+def readUnrootedSeqTree(treeFile):
+    tree, edges = dict(), set()
+    headNode, headNodeNum, leafNum = Node(), 0, 0
+    
+    # read adjacency list from file
+    infile = open(treeFile, 'r')
+    numLeaves = int(infile.readline())
+    for line in infile:
+        node1, node2 = line.rstrip().split('->')
+        
+        # add leaf nodes to tree
+        if re.search('[ACGT]', node2):
+            childNode = Node()
+            childNode.seq = node2
+            childNode.parent = node1
+            tree[ str(leafNum) ] = childNode
+            edges.add('%s->%s' % (node1, str(leafNum)))
+            leafNum += 1
+            
+        # add internal edges and choose head node
+        elif not re.search('[ACGT]', node1):
+            edges.add( line.rstrip() )
+            maxNode = max(int(node1), int(node2))
+            if maxNode >= headNodeNum:
+                headNodeNum = maxNode + 1
+                headNode.child1 = node1
+                headNode.child2 = node2
+    infile.close()
+    
+    # add head node to tree
+    headNodeNum = str(headNodeNum)
+    tree[ headNodeNum ] = headNode
+    edges.remove('%s->%s' % (headNode.child1, headNode.child2))
+    edges.remove('%s->%s' % (headNode.child2, headNode.child1))
+    
+    # add internal nodes to tree
+    addInternalNode(tree, headNodeNum, headNode.child1, edges)
+    addInternalNode(tree, headNodeNum, headNode.child2, edges)
+    
+    return tree, numLeaves, headNodeNum
+    
+# tree, numLeaves, headNodeNum = readUnrootedSeqTree('unrootedTreeSeqs.txt')
+# tree, parsScore = smallParsimony(tree, numLeaves, headNodeNum)
+# print parsScore
+# printTree(tree, headNodeNum=headNodeNum)
+
+
+# reads the adjacency file for Nearest Neighbors of a Tree Problem
+def readNN_adjList(fileName):
+    tree = dict()
+    
+    infile = open(fileName, 'r')
+    node1, node2 = infile.readline().strip().split()
+    for line in infile:
+        n1, n2 = line.rstrip().split('->')
+        if n1 in tree:
+            tree[ n1 ].append( n2 )
+        else:
+            tree[ n1 ] = [ n2 ]
+    
+    return tree, node1, node2
+    
+    
+# print the passed Nearest Neighbors Tree 
+def printNN_adjList(tree):
+    for parent in tree:
+        for child in tree[ parent ]:
+            print '%s->%s' % (parent, child)
+    print
+
+
+# swaps the nodes around the passed nodes node1/node2
+def swapNodes(tree, node1, node2, idx1, idx2):
+    childNode1 = tree[ node1 ][ idx1 ]
+    childIdx1 = tree[ childNode1 ].index(node1)
+    tree[ childNode1 ][childIdx1] = node2
+    
+    childNode2 = tree[ node2 ][ idx2 ]
+    childIdx2 = tree[ childNode2 ].index(node2)
+    tree[ childNode2 ][childIdx2] = node1
+    
+    tree[ node1 ][idx1] = childNode2
+    tree[ node2 ][idx2] = childNode1
+    
+
+# prints the two nearest neighbor trees by swapping subtrees
+# adjacent to the two passed nodes
+def printNN_trees(tree, node1, node2):
+    nodeIdx1, nodeIdx2 = [],[]
+    
+    for i in range(3):
+        if tree[ node1 ][i] != node2:
+            nodeIdx1.append(i)
+            
+    for i in range(3):
+        if tree[ node2 ][i] != node1:
+            nodeIdx2.append(i)
+    
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[0])
+    printNN_adjList(tree)
+    
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[1])
+    printNN_adjList(tree)
+    
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[0])
+    # printNN_adjList(tree)
+    
+# tree, node1, node2 = readNN_adjList('NN_adjList.txt')
+# printNN_trees(tree, node1, node2)
+
+
+def removeHeadNode(tree, headNodeNum):
+    newTree = dict()
+    seqs = dict()
+    
+    # remove head node
+    headNode = tree[ headNodeNum ]
+    child1 = tree[ headNode.child1 ]
+    child2 = tree[ headNode.child2 ]
+    
+    for node in tree:
+        if node==headNodeNum:
+            headNode = tree[ headNodeNum ]
+            child1 = tree[ headNode.child1 ]
+            child2 = tree[ headNode.child2 ]
+        else:
+            seqs[ node ] = tree[ node ].seq
+            
+    return newTree, seqs
+    
+    
+tree, numLeaves, headNodeNum = readUnrootedSeqTree('largeParsimonyTree.txt')
+tree, parsScore = smallParsimony(tree, numLeaves, headNodeNum)
+tree, seqs = removeHeadNode(tree, headNodeNum)
+print seqs
+sys.exit()
+print tree, numLeaves, headNodeNum
+
+print tree, parsScore
+
