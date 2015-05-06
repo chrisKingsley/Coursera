@@ -712,3 +712,24 @@ print tree, numLeaves, headNodeNum
 
 print tree, parsScore
 
+
+
+# # Quiz questions
+# distMat = readDistMatFile('quizMat.txt')
+# print 'limb length:', getLimbLength(distMat, len(distMat), 3)
+
+# # return neighbor joining matrix
+# def getNeighborJoinMatrix(distMat):
+    # totalDist = [ sum(distMat[i]) for i in range(len(distMat)) ]
+    # newMat = [ [0]*len(distMat) for x in range(len(distMat)) ]
+    
+    # for i in range(len(distMat)):
+        # for j in range(len(distMat)):
+            # if i==j: continue
+            # newMat[i][j] = (len(distMat)-2) * distMat[i][j] - \
+                            # totalDist[i] - totalDist[j]
+
+    # return newMat
+    
+# neighborMat = getNeighborJoinMatrix(distMat)
+# print neighborMat, neighborMat[2][3]
