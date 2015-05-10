@@ -682,36 +682,97 @@ def printNN_trees(tree, node1, node2):
 # tree, node1, node2 = readNN_adjList('NN_adjList.txt')
 # printNN_trees(tree, node1, node2)
 
-
+def parsimonyDist(tree, seqs):
+     dist = 0
+     for node1 in tree:
+         for node2 in tree[ node1 ]:
+             dist += hammingDist(seqs[node1], seqs[node2])
+             
+     return dist/2.0
+    
 def removeHeadNode(tree, headNodeNum):
-    newTree = dict()
+    newTree = { x:[] for x in tree if x!=headNodeNum }
     seqs = dict()
     
     # remove head node
     headNode = tree[ headNodeNum ]
-    child1 = tree[ headNode.child1 ]
-    child2 = tree[ headNode.child2 ]
+    newTree[ headNode.child1 ].append(headNode.child2)
+    newTree[ headNode.child2 ].append(headNode.child1)
     
-    for node in tree:
-        if node==headNodeNum:
-            headNode = tree[ headNodeNum ]
-            child1 = tree[ headNode.child1 ]
-            child2 = tree[ headNode.child2 ]
-        else:
-            seqs[ node ] = tree[ node ].seq
+    # add all nodes to new tree
+    for node in newTree:
+        if tree[ node ].child1 is not None:
+            child1 = tree[ node ].child1
+            child2 = tree[ node ].child2
+            newTree[ node ].append(child1)
+            newTree[ child1 ].append(node)
+            newTree[ node ].append(child2)
+            newTree[ child2 ].append(node)
+        seqs[ node ] = tree[ node ].seq
             
     return newTree, seqs
+
+
+def printTreeAdjList(tree, seqs):
+    print parsimonyDist(tree, seqs)
+    for node1 in tree:
+        for node2 in tree[ node1 ]:
+            dist = hammingDist(seqs[node1], seqs[node2])
+            print '%s->%s:%s' % (seqs[node1], seqs[node2], dist)
+    
+    
+def getBestNeighbor(tree, seqs, node1, node2):
+    dist, nodeIdx1, nodeIdx2 = [],[],[]
+    
+    for i in range(3):
+        if tree[ node1 ][i] != node2:
+            nodeIdx1.append(i)
+            
+    for i in range(3):
+        if tree[ node2 ][i] != node1:
+            nodeIdx2.append(i)
+    
+    dist.append(parsimonyDist(tree, seqs))
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[0])
+    dist.append(parsimonyDist(tree, seqs))
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[1])
+    dist.append(parsimonyDist(tree, seqs))
+    swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[0])
+    
+    minIdx = dist.index(min(dist))
+    print "minIdx:", minIdx, " minDist", dist[minIdx], dist
+    print 'origDist:', parsimonyDist(tree, seqs)
+    
+    # if tree was improved by a swap, keep that tree and print
+    # the new parsimony score and adjacency list
+    if minIdx==1:
+        swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[0])
+        printTreeAdjList(tree, seqs)
+    elif minIdx==2:
+        swapNodes(tree, node1, node2, nodeIdx1[0], nodeIdx2[1])
+        printTreeAdjList(tree, seqs)
+    
+    
+def getBestTree(tree, seqs):
+    innerNodes = [ x for x in tree if len(tree[x])==3 ]
+    
+    while True:
+        origDist = parsimonyDist(tree, seqs)
+        for node1 in innerNodes:
+            for node2 in tree[node1]:
+                if len(tree[node1]) + len(tree[node2])==6:
+                    getBestNeighbor(tree, seqs, node1, node2)
+        if origDist==parsimonyDist(tree, seqs):
+            break
+    
     
     
 tree, numLeaves, headNodeNum = readUnrootedSeqTree('largeParsimonyTree.txt')
 tree, parsScore = smallParsimony(tree, numLeaves, headNodeNum)
 tree, seqs = removeHeadNode(tree, headNodeNum)
-print seqs
-sys.exit()
-print tree, numLeaves, headNodeNum
-
-print tree, parsScore
-
+print tree, seqs, parsimonyDist(tree, seqs)
+printTreeAdjList(tree, seqs)
+getBestTree(tree, seqs)
 
 
 # # Quiz questions
