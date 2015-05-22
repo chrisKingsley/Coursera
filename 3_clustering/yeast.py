@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 import math, re, sys
-# sys.path.append("../2_evolutionary_trees")
-# from sars import upgma 
+
 
 # reads a matrix of points.  Reads centers if the
 # passed distortion flag is true
@@ -56,6 +55,23 @@ def dotProd(list1, list2):
         prod += (list1[i]*list2[i])
     
     return prod
+    
+
+# returns the largest distance between the data points and their
+# closest center
+def maxDistance(data, centers):
+    dists = []
+    
+    for i in range(len(data)):
+        minDist = sys.maxint
+        for j in range(len(centers)):
+            dist = euclideanDist(data[i], centers[j])
+            if dist < minDist:
+                minDist = dist
+        dists.append(minDist)
+        
+    return max(dists)
+               
     
 # for the given set of points and value of k, returns the
 # center points that have the largest distance to the
@@ -124,13 +140,13 @@ def assignClusters(data, centers, k):
 # for the given set of points and their dimension m, returns
 # the center of gravity (mean of the sum of each component)
 def centerOfGravity(points, m):
-    centers = [0.0]*m
+    center = [0.0]*m
     
     for i in range(len(points)):
         for j in range(m):
-            centers[j] += points[i][j]/len(points)
-            
-    return centers
+            center[j] += float(points[i][j])/len(points)
+        
+    return center
 
 
 # for the given set of data, clusters, k (# of clusters), and
@@ -226,7 +242,7 @@ def soft_kMeans(data, k, m, beta, numIter=100):
     # print ' '.join([ str(x) for x in center ])
 
     
-# returns key for two numbers
+# returns hash key for two numerical indices
 def getKey(i, j):
     return '%s %s' % (i, j)
     
@@ -273,7 +289,9 @@ def joinClusters(clusters, dists, c1, c2):
         dists[ getKey(k, c1) ] = dist
         dists[ getKey(c1, k) ] = dist
     
-    
+# performs heirarchical clustering on the passed distance matrix of
+# dimension m.  Prints cluster members for each new cluster generated
+# in each round of joining.
 def hierarchicalCluster(m, distMat):
     dists = { getKey(i,j): distMat[i][j] 
                for i in range(m) for j in range(m) }
@@ -289,3 +307,42 @@ def hierarchicalCluster(m, distMat):
 
 
 # Quiz questions
+# data = [[2,8], [2,5], [6,9], [7,5], [5,2]]
+# centers = [[3,5], [5,4]]
+# print maxDistance(data, centers)
+
+# data = [[2,6], [4,9], [5,7], [6,5], [8,3]]
+# centers = [[4,5], [7,4]]
+# print squaredErrorDistortion(data, centers)
+
+# data = [[17,0,-4], [3,14,23], [9,7,16], [7,3,5]]
+# print centerOfGravity(data, 3)
+
+
+# version of the expectation step for clustering, but using
+# Newtonian distance
+def eStep_newton(data, centers):
+    resp = [ [0]*len(data) for x in range(len(centers)) ]
+    
+    # calculate responsibility of each cluster for each data point
+    for i in range(len(data)):
+        sum = 0.0
+        for j in range(len(centers)):
+            dist = euclideanDist(centers[j], data[i])
+            resp[j][i] = 1/(dist*dist)
+            sum += resp[j][i]
+        for j in range(len(centers)):
+            resp[j][i] /= sum
+            
+    return resp
+    
+# data = [[2,8], [2,5], [6,9], [7,5], [5,2]]
+# centers = [[3,5], [5,4]]
+# resp = eStep(data, 1, centers)
+# print resp
+
+
+# data = [[2,6], [4,9], [5,7], [6,5], [8,3]]
+# hiddenMat = [[0.6,0.1,0.8,0.5,0.7],[0.4,0.9,0.2,0.5,0.3]]
+# center = mStep(data, hiddenMat, 2)
+# print center
