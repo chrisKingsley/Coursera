@@ -1,15 +1,20 @@
 #!/usr/bin/env python
 
 import math, re, sys
-
+# sys.path.append("../2_evolutionary_trees")
+# from sars import upgma 
 
 # reads a matrix of points.  Reads centers if the
 # passed distortion flag is true
-def readMatrixFile(fileName, distortion=False, betaParam=False):
+def readMatrixFile(fileName, readNumClusters=True,
+                   distortion=False, betaParam=False):
     matrix, centers, readCenters = [], [], True
     
     infile = open(fileName, 'r')
-    k, m = [ int(x) for x in infile.readline().rstrip().split() ]
+    if readNumClusters:
+        k, m = [ int(x) for x in infile.readline().rstrip().split() ]
+    else:
+        m = int(infile.readline().rstrip())
     if betaParam:
         beta = float(infile.readline().rstrip())
     
@@ -29,8 +34,10 @@ def readMatrixFile(fileName, distortion=False, betaParam=False):
         return  k, m, matrix, centers
     elif betaParam:
         return k, m, beta, matrix
-    else:
+    elif readNumClusters:
         return  k, m, matrix
+    else:
+        return m, matrix
     
     
 # returns the Euclidean distance between two lists
@@ -217,5 +224,68 @@ def soft_kMeans(data, k, m, beta, numIter=100):
 # centers = soft_kMeans(data, k, m, beta, numIter=100)
 # for center in centers:
     # print ' '.join([ str(x) for x in center ])
+
+    
+# returns key for two numbers
+def getKey(i, j):
+    return '%s %s' % (i, j)
     
     
+# returns the index of the two closest clusters based on the distance matrix
+def closestClusters(clusters, dists, m):
+    c1, c2, minDist = 0, 0, sys.maxint
+    
+    for i in clusters:
+        for j in clusters:
+            if i!=j and dists[ getKey(i,j) ] < minDist:
+                c1, c2, minDist = i, j, dists[ getKey(i,j) ]
+    
+    return c1, c2
+    
+    
+# prints the members of the newly formed cluster
+def printNewCluster(clusters, c1, c2):
+    clust1 = ' '.join(str(x+1) for x in clusters[c1] )
+    clust2 = ' '.join(str(x+1) for x in clusters[c2] )
+    print '%s %s' % (clust1, clust2)
+
+
+# calculates cluster to cluster distance based on average distance
+# of the members of each cluster to each other
+def clusterAveDist(clusters, dists, k, c1):
+    n, dist = 0.0, 0.0
+    for i in clusters[k]:
+        for j in clusters[c1]:
+            dist += dists[ getKey(i, j) ]
+            n += 1
+            
+    return dist/n
+
+    
+# merges the two passed clusters (indexed by c1/c2) into one cluster
+# deletes one of the old clusters and updates the distance matrix
+def joinClusters(clusters, dists, c1, c2):
+    clusters[c1] = clusters[c1] + clusters[c2]
+    del clusters[c2]
+    
+    for k in clusters:
+        dist = clusterAveDist(clusters, dists, k, c1)
+        dists[ getKey(k, c1) ] = dist
+        dists[ getKey(c1, k) ] = dist
+    
+    
+def hierarchicalCluster(m, distMat):
+    dists = { getKey(i,j): distMat[i][j] 
+               for i in range(m) for j in range(m) }
+    clusters = { i:[i] for i in range(m) }
+    
+    while len(clusters) > 1:
+        c1, c2 = closestClusters(clusters, dists, m)
+        printNewCluster(clusters, c1, c2)
+        joinClusters(clusters, dists, c1, c2)
+
+# m, distMat = readMatrixFile('distMat.txt', readNumClusters=False)
+# hierarchicalCluster(m, distMat)
+
+
+# Quiz questions

@@ -767,12 +767,12 @@ def getBestTree(tree, seqs):
     
     
     
-tree, numLeaves, headNodeNum = readUnrootedSeqTree('largeParsimonyTree.txt')
-tree, parsScore = smallParsimony(tree, numLeaves, headNodeNum)
-tree, seqs = removeHeadNode(tree, headNodeNum)
-print tree, seqs, parsimonyDist(tree, seqs)
-printTreeAdjList(tree, seqs)
-getBestTree(tree, seqs)
+# tree, numLeaves, headNodeNum = readUnrootedSeqTree('largeParsimonyTree.txt')
+# tree, parsScore = smallParsimony(tree, numLeaves, headNodeNum)
+# tree, seqs = removeHeadNode(tree, headNodeNum)
+# print tree, seqs, parsimonyDist(tree, seqs)
+# printTreeAdjList(tree, seqs)
+# getBestTree(tree, seqs)
 
 
 # # Quiz questions
