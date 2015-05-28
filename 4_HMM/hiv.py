@@ -3,6 +3,8 @@
 import math, os, re, sys
 
 
+# read table of transition or emission probabilites from array of
+# file contents
 def readProbTable(contents, lineNum):
     probMat = dict()
     
@@ -19,7 +21,8 @@ def readProbTable(contents, lineNum):
             
     return probMat, lineNum + 1
         
-        
+   
+# read  file containing transition and/or emission probabilities
 def readTransitionFile(filePath, readEmittedSeq=True, readHiddenPath=False,
                        readTransitionProbs=True, readEmissionProbs=True):
     lineNum = 0
@@ -51,6 +54,8 @@ def readTransitionFile(filePath, readEmittedSeq=True, readHiddenPath=False,
     return retVal
     
     
+# given hidden path and transition scoreing matrix, calculate the
+# overall transition probability
 def calcTransProb(hiddenPath, transMat):
     prob = 0.5
     for i in range(len(hiddenPath)-1):
@@ -62,6 +67,8 @@ def calcTransProb(hiddenPath, transMat):
 # print calcTransProb(hiddenPath, transMat)
 
 
+# calculates the emission probablility of the emitted sequence
+# given the hidden path and the emission scoring matrix
 def calcEmissionProb(emittedSeq, hiddenPath, emissionMat):
     prob = 1.0
     for i in range(len(hiddenPath)):
@@ -74,6 +81,9 @@ def calcEmissionProb(emittedSeq, hiddenPath, emissionMat):
 # print calcEmissionProb(emittedSeq, hiddenPath, emissionMat)
 
 
+# returns the scoring matrix for determining the most probable
+# hidden state given an emitted sequence and the transition/emission
+# scoring matrices of an HMM
 def getScoringMat(emittedSeq, emissionMat, transitionMat):
     hiddenStates = sorted(transitionMat.keys())
     stateProbs = [ [0]*len(hiddenStates) for x in range(len(emittedSeq)) ]
@@ -97,6 +107,9 @@ def getScoringMat(emittedSeq, emissionMat, transitionMat):
     return stateProbs
     
     
+# returns the most probable hidden path of the emitted sequence, given
+# the max state probabilities at each position and transition/emission 
+# matrices
 def getHiddenPath(stateProbs, emissionMat, transitionMat, emittedSeq):
     hiddenStates = sorted(transitionMat.keys())
     
@@ -117,15 +130,71 @@ def getHiddenPath(stateProbs, emissionMat, transitionMat, emittedSeq):
     
     return hiddenPath
 
+    
+# find the most probable hidden path given the emitted sequence,
+# and emission/transition scoring matrices
 def findOptimalHiddenPath(emittedSeq, emissionMat, transitionMat):
     stateProbs = getScoringMat(emittedSeq, emissionMat, transitionMat)
     hiddenPath = getHiddenPath(stateProbs, emissionMat, transitionMat, emittedSeq)
     
     return hiddenPath
     
+# emittedSeq, transitionMat, emissionMat = \
+    # readTransitionFile('transitionProbs3.txt', readEmissionProbs=True)
+# print findOptimalHiddenPath(emittedSeq, emissionMat, transitionMat)
+
+
+# returns the likelihood matrix for the probabilities associated with
+# all the hidden states of the emitted sequence at each position
+def getLikelihoodMatrix(emittedSeq, emissionMat, transitionMat):
+    hiddenStates = sorted(transitionMat.keys())
+    stateProbs = [ [0]*len(hiddenStates) for x in range(len(emittedSeq)) ]
     
-emittedSeq, transitionMat, emissionMat = \
-    readTransitionFile('transitionProbs3.txt', readEmissionProbs=True)
-print findOptimalHiddenPath(emittedSeq, emissionMat, transitionMat)
+    # initialize first entry in state probability matrix
+    stateProbs[0] = [1.0/len(hiddenStates)] * len(hiddenStates)
+    for i in range(len(hiddenStates)):
+        stateProbs[0][i] *= emissionMat[ hiddenStates[i] ][ emittedSeq[0] ]
+        
+    # complete the scoring matrix
+    for i in range(1, len(emittedSeq)):
+        for j in range(len(hiddenStates)):
+            prob = 0.0
+            for k in range(len(hiddenStates)):
+                prob += stateProbs[i-1][k] * \
+                        transitionMat[ hiddenStates[k] ][ hiddenStates[j] ] * \
+                        emissionMat[ hiddenStates[j] ][ emittedSeq[i] ]
+            stateProbs[i][j] = prob
+            
+    return stateProbs
+
+    
+# determine the likelihood that a sequence was emitted by an HMM, given
+# the emitted sequence and the transition/emission probabilities of the HMM
+def outcomeLikelihood(emittedSeq, emissionMat, transitionMat):
+    stateProbs = getLikelihoodMatrix(emittedSeq, emissionMat, transitionMat)
+    
+    return sum(stateProbs[-1])
+    
+# emittedSeq, transitionMat, emissionMat = \
+    # readTransitionFile('transitionProbs4.txt', readEmissionProbs=True)
+# print outcomeLikelihood(emittedSeq, emissionMat, transitionMat)
 
 
+# reads file containing alignments and parameters to build an HMM
+def readAlignmentFile(filePath):
+    lineNum = 0
+    infile = open(filePath, 'r')
+    contents = [ x.rstrip() for x in infile.readlines() ]
+    infile.close()
+    
+    theta = float(contents[lineNum])
+    lineNum += 4
+    
+    seqs = []
+    for i in range(lineNum, len(contents)):
+        seqs.append(contents[i])
+        
+    return theta, seqs
+    
+theta, seqs = readAlignmentFile('alignment.txt')
+print theta, seqs
