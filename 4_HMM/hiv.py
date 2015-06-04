@@ -188,13 +188,46 @@ def readAlignmentFile(filePath):
     infile.close()
     
     theta = float(contents[lineNum])
-    lineNum += 4
+    lineNum += 2
+    alphabet = contents[lineNum]split()
+    lineNum += 2
     
     seqs = []
     for i in range(lineNum, len(contents)):
         seqs.append(contents[i])
         
-    return theta, seqs
+    return theta, alphabet, seqs
     
-theta, seqs = readAlignmentFile('alignment.txt')
-print theta, seqs
+    
+def fracIndel(seqs, pos):
+    numIndel = 0.0
+    for i in range(len(seqs)):
+        if seqs[i][pos]=='-':
+            numIndel += 1.0
+            
+    return numIndel/len(seqs)
+
+    
+def addProbs(probHash, key1, key2, val):
+    if key1 not in probHash:
+        probHash[ key1 ] = dict()
+    probHash[ key1 ][ key2 ] = val
+
+def makeMatsFromAlignment(theta, alphabet, seqs):
+    transDict, emitDict = dict(), dict()
+    states = ['S']
+    
+    # initialize starting transition probs
+    addProb(transDict, 'S', 'M1', 1-fracIndel(seqs, 0))
+    addProb(transDict, 'S', 'I0', fracIndel(seqs, 0))
+    
+    stateNum = 1
+    for i in range(len(seqs[0])):
+        newStates = [ '%s%d' % (x, i) for x in ['M','D','I'] ]
+        
+        if fracIndel(seqs, 0) < theta:
+            
+            
+
+theta, alphabet, seqs = readAlignmentFile('alignment.txt')
+makeMatsFromAlignment(theta, alphabet, seqs)
