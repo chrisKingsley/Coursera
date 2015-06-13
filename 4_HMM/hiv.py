@@ -189,7 +189,7 @@ def readAlignmentFile(filePath):
     
     theta = float(contents[lineNum])
     lineNum += 2
-    alphabet = contents[lineNum]split()
+    alphabet = contents[lineNum].split()
     lineNum += 2
     
     seqs = []
@@ -213,21 +213,77 @@ def addProbs(probHash, key1, key2, val):
         probHash[ key1 ] = dict()
     probHash[ key1 ][ key2 ] = val
 
-def makeMatsFromAlignment(theta, alphabet, seqs):
-    transDict, emitDict = dict(), dict()
+    
+def processInsertion(seqs, emittedMat, pos):
+    insertionFound = False
+    startPos = pos
+    
+    while pos < len(seqs[0]) and fracIndel(seqs, pos) > theta:
+        insertionFound = True
+        pos += 1
+            
+    if insertionFound:
+        emittedVals = []
+        
+        for i in range(len(seqs)):
+            if re.match('-+', seqs[i][startPos:pos]):
+                emittedVals.append('-')
+            else:
+                emittedVals.append( seqs[i][startPos:pos] )
+                
+        emittedMat.append(emittedVals)
+    else:
+        emittedMat.append( ['-']*len(seqs) )
+        
+    return pos
+    
+    
+def getAlignmentMat(seqs, theta):
+    emittedMat = []
+    
+    # check first position for insertion
+    pos = processInsertion(seqs, emittedMat, 0)
+    
+    while pos < len(seqs[0]):
+        emittedVals = []
+        for i in range(len(seqs)):
+            emittedVals.append(seqs[i][pos])
+        emittedMat.append(emittedVals)
+        pos += 1
+        
+        pos = processInsertion(seqs, emittedMat, pos)
+        
+    return emittedMat
+
+def containsInsertion(vals):
+    for val in vals:
+        if val!='-':
+            return True
+    return False
+    
+def getProbMats(emittedMat):
+    hiddenProbs, emittedProbs = dict(), dict()
+    
+    # 
+        
+def makeProbMatsFromAlignment(theta, alphabet, seqs):
+    emittedMat = getAlignmentMat(seqs, theta)
+    transDict, emitDict = getProbMats(emittedMat)
     states = ['S']
     
     # initialize starting transition probs
-    addProb(transDict, 'S', 'M1', 1-fracIndel(seqs, 0))
-    addProb(transDict, 'S', 'I0', fracIndel(seqs, 0))
+    addProbs(transDict, 'S', 'M1', 1-fracIndel(seqs, 0))
+    addProbs(transDict, 'S', 'I0', fracIndel(seqs, 0))
     
-    stateNum = 1
-    for i in range(len(seqs[0])):
+    pos, stateNum = 0, 1
+    while pos < len(seqs[0]):
+        
+        
         newStates = [ '%s%d' % (x, i) for x in ['M','D','I'] ]
         
-        if fracIndel(seqs, 0) < theta:
+        pos += 1
             
             
 
 theta, alphabet, seqs = readAlignmentFile('alignment.txt')
-makeMatsFromAlignment(theta, alphabet, seqs)
+makeProbMatsFromAlignment(theta, alphabet, seqs)
