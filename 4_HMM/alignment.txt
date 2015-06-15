@@ -1,12 +1,9 @@
-0.289
+0.252
 --------
 A B C D E
 --------
-EBA
-E-D
-EB-
-EED
-EBD
-EBE
-E-D
-E-D
+DCDABACED
+DCCA--CA-
+DCDAB-CA-
+BCDA---A-
+BC-ABE-AE

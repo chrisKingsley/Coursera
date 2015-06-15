@@ -226,8 +226,8 @@ def processInsertion(seqs, emittedMat, pos):
         emittedVals = []
         
         for i in range(len(seqs)):
-            if re.match('-+', seqs[i][startPos:pos]):
-                emittedVals.append('-')
+            if re.match('^-+$', seqs[i][startPos:pos]):
+                emittedVals.append('-'*(pos-startPos))
             else:
                 emittedVals.append( seqs[i][startPos:pos] )
                 
@@ -260,28 +260,151 @@ def containsInsertion(vals):
         if val!='-':
             return True
     return False
+
+def getAlignProbs(emittedMat, transProbs, emitProbs, i):
+    stateNum = i/2 + 1
+    mKey, dKey, iKey = 'M%d' % stateNum, 'D%d' % stateNum, 'I%d' % stateNum
+    mKey2, dKey2 = 'M%d' % (stateNum+1), 'D%d' % (stateNum+1)
+    
+    # transition probabilities
+    numEmits, numDels = 0.0, 0.0
+    transProbs[ mKey ], transProbs[ dKey ] = dict(), dict()
+    for j in range(len(emittedMat[i])):    
+        if emittedMat[i][j]=='-':
+            numDels += 1
+            key = dKey
+        else:
+            numEmits += 1
+            key = mKey
+            
+        if not re.match('^-+$', emittedMat[i+1][j]):
+            key2 = iKey
+        elif i==len(emittedMat)-2:
+            key2 = 'E'
+        elif emittedMat[i+2][j]=='-':
+            key2 = dKey2
+        else:
+            key2 = mKey2
+            
+        transProbs[ key ][ key2 ] = transProbs[ key ].get(key2, 0) + 1
+        
+    for key2 in transProbs[ mKey ]:
+        transProbs[ mKey ][ key2 ] /= numEmits
+    for key2 in transProbs[ dKey ]:
+        transProbs[ dKey ][ key2 ] /= numDels
+        
+    
+    # emission probabilities
+    emitProbs[ mKey ] = dict()
+    numEmits = 0.0
+    for j in range(len(emittedMat[i])):
+        if emittedMat[i][j]!='-':
+            numEmits+=1
+            emitProbs[ mKey ][ emittedMat[i][j] ] = \
+                emitProbs[ mKey ].get(emittedMat[i][j], 0) + 1
+    if numEmits>0:
+        for key2 in emitProbs[ mKey ]:
+            emitProbs[ mKey ][ key2 ] /= numEmits
+    
+def getAlignInsertProbs(emittedMat, transProbs, emitProbs, alphabet, i):
+    key = 'I%d' % (i/2)
+    emitProbs[ key ] = dict()
+    
+    # transition probabilities
+    if i==0:
+        fracInsert = 1 - emittedMat[0].count('-')/float(len(emittedMat[0]))
+        addProbs(transProbs, 'S', 'I0', fracInsert)
+        addProbs(transProbs, 'S', 'M1', 1-fracInsert)
+    if containsInsertion(emittedMat[i]):
+        transProbs[ key ] = dict()
+        if i==len(emittedMat)-1: 
+            addProbs(transProbs, key, 'E', 1.0)
+        else:
+            nextStateNum, numInserts = i/2 + 1, 0.0
+            for j in range(len(emittedMat[i])):
+                if not re.match('^-+$', emittedMat[i][j]):
+                    numInserts += 1
+                    if(emittedMat[i+1][j]=='-'):
+                        key2 = 'D%d' % nextStateNum
+                    else:
+                        key2 = 'M%d' % nextStateNum
+                    transProbs[ key ][ key2 ] = \
+                            transProbs[ key ].get(key2, 0) + 1
+                    
+                    numReinsert = len(emittedMat[i][j])-emittedMat[i][j].count('-')-1
+                    if numReinsert > 0:
+                        key2 = key
+                        transProbs[ key ][ key2 ] = \
+                            transProbs[ key ].get(key2, 0) + numReinsert
+                        numInserts += numReinsert
+                    
+            for key2 in transProbs[ key ]:
+                transProbs[ key ][ key2 ] /= numInserts
+            print transProbs
+            
+    
+    # emission probabilities
+    numInserts=0.0
+    for j in range(len(emittedMat[i])):
+        if not re.match('^-+$', emittedMat[i][j]):
+            for k in emittedMat[i][j]:
+                if k in alphabet:
+                    emitProbs[ key ][ k ] = \
+                        emitProbs[ key ].get(k, 0) + 1
+                    numInserts+=1
+    if numInserts>0:
+        for key2 in emitProbs[ key ]:
+            emitProbs[ key ][ key2 ] /= numInserts
+        
+    
     
 def getProbMats(emittedMat):
-    hiddenProbs, emittedProbs = dict(), dict()
+    transProbs, emitProbs = dict(), dict()
+    print emittedMat
     
-    # 
+    # emission probs
+    for i in range(len(emittedMat)):
+        if i % 2 == 0:
+            getAlignInsertProbs(emittedMat, transProbs, emitProbs, alphabet, i)
+        else:
+            getAlignProbs(emittedMat, transProbs, emitProbs, i)
+    
+    return transProbs, emitProbs
+    
+def printProbMats(emittedMat, transProbs, emitProbs, alphabet):
+    states = ['S', 'I0']
+    for i in range(len(emittedMat)/2):
+        for state in ['M','D','I']:
+            states.append( '%s%d' % (state, i+1) )
+    states.append('E')
+    
+    # transmission probs
+    print '\t%s' % '\t'.join(states)
+    for state1 in states:
+        print state1,
+        for state2 in states:
+            try:
+                print '\t%0.3f' % transProbs[state1][state2],
+            except:
+                print '\t0',
+        print
+    
+    # emission probs
+    print '--------\n\t%s' % '\t'.join(alphabet)
+    for state in states:
+        print state,
+        for emitChar in alphabet:
+            try:
+                print '\t%0.3f' % emitProbs[state][emitChar],
+            except:
+                print '\t0',
+        print
         
 def makeProbMatsFromAlignment(theta, alphabet, seqs):
     emittedMat = getAlignmentMat(seqs, theta)
-    transDict, emitDict = getProbMats(emittedMat)
-    states = ['S']
+    transProbs, emitProbs = getProbMats(emittedMat)
     
-    # initialize starting transition probs
-    addProbs(transDict, 'S', 'M1', 1-fracIndel(seqs, 0))
-    addProbs(transDict, 'S', 'I0', fracIndel(seqs, 0))
-    
-    pos, stateNum = 0, 1
-    while pos < len(seqs[0]):
-        
-        
-        newStates = [ '%s%d' % (x, i) for x in ['M','D','I'] ]
-        
-        pos += 1
+    printProbMats(emittedMat, transProbs, emitProbs, alphabet)
             
             
 
